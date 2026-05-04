@@ -169,6 +169,8 @@ FL-{abbr}-10-02-03 遭遇拦截子流程
 
 **每轮必做，且在三代理评审之前。**
 
+**执行方式**: 主会话创建目录结构，其余工作（读取原始文档、提取流程、生成文档）全部通过 subagent 执行。
+
 ```
 输入: 原始文档（PRD/设计稿/需求描述，任意格式）
 输出: 标准化流程文档集 (docs/iterative-flows/{abbr-NN-name}/)
@@ -195,10 +197,23 @@ FL-{abbr}-10-02-03 遭遇拦截子流程
 
 5. 建立子流程引用关系（→ FL-{abbr}-{NN}-{NN}）
 
-6. 生成 INDEX.md 总索引
+6. 生成 L1 主流程骨架（串联所有子流程）:
+   - 每个功能模块必须有 L1 主流程，将离散的子流程/阶段串联为完整链路
+   - L1 主流程描述步骤之间的流转顺序、分支条件、异常跳转，是"全局路线图"
+   - L2+ 子流程是 L1 各步骤的展开细节
+   - 示例: FL-SIEGE-01 攻城战主流程 = 准备 → 行军 → 战斗 → 结算，每个阶段展开为子流程
+
+7. 创建 flows/ 目录，生成初始流程文档:
+   - 按编号为每个主流程创建 FL-{abbr}-{NN}-*.md 文件
+   - 按模板格式填写：元信息、目录导航、流程结构、步骤详情、异常汇总
+   - **只描述流程本身**（步骤流转、分支条件、异常处理），设计细节（字段定义、UI布局、业务规则、数据模型）不复制，用引用链接指向 PRD 对应章节
+   - 每个步骤的"来源"字段填写 PRD 引用链接，如: `[PRD 3.1 攻城准备](../../prd/siege.md#3-1)`
+   - 生成 flows/INDEX.md（流程列表 + 文件映射）
+
+8. 更新根级 INDEX.md 总索引
 
 规则:
-- R1: 流程文档只描述流程（步骤流转、分支、条件），PRD设计内容（字段/UI/业务规则）通过引用指向原始文档，不复制
+- R1: 流程文档只描述流程（步骤流转、分支、条件），PRD设计内容（字段/UI/业务规则）通过引用链接指向原始文档，绝不复制
 - R2: 编号从01开始顺序分配，不跳号
 - R3: 子流程ID = 展开它的步骤ID
 - R4: 提取是"组织"不是"补全"，缺失的细节留给后续步骤发现和补充
@@ -206,6 +221,7 @@ FL-{abbr}-10-02-03 遭遇拦截子流程
 - R6: 文件超长时按大模块/章节拆分；子流程永远内联，不单独拆分
 - R7: 不复制原始文档，在 PLAN.md 中记录背景和目标
 - R8: 流程中发现的PRD未覆盖的步骤，记录到PRD缺失清单，用于指导后续完善PRD
+- R9: 每个功能模块必须有 L1 主流程串联所有子流程，不能只生成离散的子流程片段
 ```
 
 ### 产出：标准化流程文档集
@@ -217,6 +233,7 @@ docs/iterative-flows/{abbr-NN-name}/
 ├── CHECKLIST.md                                 # 流程补全检查清单（每轮更新）
 ├── PRD-GAPS.md                                  # PRD缺失清单（整个迭代维护一份，持续更新）
 ├── flows/                                       # 流程文档（每轮直接修改，不复制/不同步）
+│   ├── INDEX.md                                 # flows 索引（流程列表 + 文件映射）
 │   ├── FL-{abbr}-01-*.md
 │   └── ...
 └── rounds/
@@ -234,6 +251,8 @@ docs/iterative-flows/{abbr-NN-name}/
 ### Flow Document Template
 
 每个 `FL-{abbr}-{NN}-*.md` 文件遵循以下结构:
+
+> **核心原则**: 只写流程（步骤流转、分支、条件、异常），不复制 PRD 的设计内容。设计细节通过引用链接指向 PRD。
 
 ```markdown
 # FL-{abbr}-{NN} {流程名称}
@@ -282,10 +301,10 @@ FL-{abbr}-{NN} {流程名称}
 
 ### FL-{abbr}-{NN}-01 {步骤名称}
 
-> **来源**: [PLAN.md](../PLAN.md) 中的原始文档引用
+> **来源**: [PRD 3.1 攻城准备](../../path/to/prd.md#3-1) — 仅描述流程，设计细节见 PRD 原文
 
 **用户感知**: 看到 [...] → 操作 [...] → 反馈 [...]
-**系统行为**: [执行的逻辑 / 数据变更 / 接口调用]
+**系统行为**: [执行的逻辑 / 状态变更 / 调用]（不复制字段定义、UI布局、业务规则）
 
 **异常分支**:
 | 条件 | 处理方式 | 转至步骤 |
@@ -365,6 +384,8 @@ Read rounds/round-N/issues.md → 进入 Step 2
 
 根据缺陷清单，修改流程文档。**每轮迭代修改同一份文件，不复制、不同步。**
 
+**执行方式**: 主会话读取 issues.md 摘要后，分派 subagent 执行流程文档修改。
+
 ```
 按优先级处理缺陷:
 P0: 歧义/矛盾/流程断裂/无法实施 — 立即解决
@@ -381,10 +402,12 @@ P3: 优化建议 — backlog
 
 **Rules:**
 - Maintain ID consistency (add new IDs, never renumber existing)
-- 修改/生成完成后更新 INDEX.md（如有新增ID或文件）
+- 修改/生成完成后更新 flows/INDEX.md（如有新增ID或文件）
 - 缺陷清单中的每个问题必须在文档中得到解决
 
 ## Step 3: 完整性检查 (Completeness Check)
+
+**执行方式**: 主会话分派 subagent 对 `flows/` 目录中的每个流程进行验证，结果写入文件。
 
 对 `flows/` 目录中的每个流程进行验证：
 
@@ -464,6 +487,8 @@ P2/P3 issues logged for next round but don't block current round.
 
 **从零核验**，忽略之前所有轮次的结果，重新核验全部流程。
 
+**执行方式**: 与 Step 1 相同的 Task 模式 — User/Dev Proxy 并行 subagent → Integrator 串行 subagent。
+
 ```
 1. 梳理所有流程 → 检查子流程引用有效性
 2. User/Dev Proxy 并行核验 → Integrator 串行核验 + 合并去重
@@ -483,13 +508,15 @@ P2/P3 issues logged for next round but don't block current round.
 
 ## Step 8: 文档记录 (Document Round)
 
+**执行方式**: 主会话分派 subagent 生成各文档，主会话仅读取文件摘要向用户汇报。
+
 ```
 1. 生成本轮报告 → rounds/round-N/report.md
 2. 更新PRD缺失清单 → PRD-GAPS.md
 3. 更新流程补全检查清单 → CHECKLIST.md
 4. 生成下轮计划 → rounds/round-N+1/plan.md
 5. 每3轮进行复盘（当 N % 3 == 0 时）→ 更新 rounds/summary.md
-6. 更新 INDEX.md（如有新增ID或文件）
+6. 更新 INDEX.md 和 flows/INDEX.md（如有新增ID或文件）
 ```
 
 ## Execution Model
