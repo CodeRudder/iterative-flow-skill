@@ -38,29 +38,97 @@ Round 1 → Round 2 → Round 3 → ... → Round N (done)
 
 Rounds repeat until all flows meet completeness targets.
 
+## 补全方法选择 (Review Method Selection)
+
+在首次启动或用户要求切换方法时，询问用户选择评审/补全方法：
+
+```
+请选择流程补全方法：
+
+方法 A: 三代理评审 (Three-Proxy Review)
+  User Proxy ∥ Dev Proxy → Integrator
+  适合：已有流程文档需要迭代优化，关注用户体验和实施可行性
+
+方法 B: 四轴交叉审查 (Four-Axis Cross-Review)
+  Flow × Data × Role × Rule 模拟多视角交叉审查
+  适合：从 PRD 生成结构化流程树，关注轴间一致性和完整性
+
+方法 C: 组合模式 (Combined)
+  先用四轴交叉审查生成初始流程树，再用三代理评审迭代优化
+  适合：新项目从零开始，需要完整的生成+优化流程
+```
+
+**首次启动默认**：如果用户未指定，根据输入判断：
+- 输入是 PRD/需求文档（无已有流程文档）→ 默认方法 B（四轴交叉审查）
+- 输入是已有流程文档（需迭代优化）→ 默认方法 A（三代理评审）
+
+**中途切换**：用户可在任意轮次切换方法，在 Round 计划中记录使用的方法。
+
 ## The Inner Loop: Per-Round Sub-Process
+
+### 方法 A 内循环 (Three-Proxy)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Round N                                                     │
+│  Round N [方法A]                                              │
 │                                                              │
 │  0. 提取流程 (Extract & Normalize Flows)                      │
 │         ↓                                                    │
-│  1. 三代理评审 (User Proxy ∥ Dev Proxy → Integrator)         │
+│  1A. 三代理评审 (User Proxy ∥ Dev Proxy → Integrator)         │
 │         ↓                                                    │
 │  2. 修改流程文档 (Update Flows)                                │
 │         ↓                                                    │
 │  3. 完整性检查 (Completeness Check)                            │
 │         ↓                                                    │
-│  4. 修改流程文档 (Update Flows Again)                          │
-│         ↓                                                    │
-│  5. 完整性检查 (Re-check)                                     │
-│         ↓                                                    │
-│  6. ...循环直到P0=0且P1=0                                    │
+│  4-6. 修改 → 重查 → 循环直到P0=0且P1=0                        │
 │         ↓                                                    │
 │  7. 核验环节 (Verification)                                   │
 │         ↓                                                    │
 │  8. 文档记录 (Document Round)                                 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 方法 B 内循环 (Four-Axis Cross-Review)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Round N [方法B]                                              │
+│                                                              │
+│  0. 提取流程 (Extract & Normalize Flows)                      │
+│         ↓                                                    │
+│  1B. 四轴交叉审查 (按 Phase 分批)                              │
+│      │                                                       │
+│      ├─ 并行生成四轴输出 (Flow/Data/Role/Rule)                │
+│      ├─ 模拟多视角交叉审查                                     │
+│      ├─ 分类处理 (自动解决/推荐方案/待用户决策)                 │
+│      ├─ 整理决策日志                                          │
+│      └─ 待用户决策 → 暂停等待 → 修复                           │
+│         ↓                                                    │
+│  2. 修改流程文档 (Update Flows)                                │
+│         ↓                                                    │
+│  3. 完整性检查 (Completeness Check)                            │
+│         ↓                                                    │
+│  4-6. 修改 → 重查 → 循环直到P0=0且P1=0                        │
+│         ↓                                                    │
+│  7. 核验环节 (Verification)                                   │
+│         ↓                                                    │
+│  8. 文档记录 (Document Round + 决策日志)                      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 方法 C 内循环 (Combined)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Round N [方法C]                                              │
+│                                                              │
+│  0. 提取流程 (Extract & Normalize Flows)                      │
+│         ↓                                                    │
+│  1B. 四轴交叉审查 (生成初始流程树 + 交叉审查)                  │
+│         ↓                                                    │
+│  1A. 三代理评审 (在四轴审查结果上进一步优化)                    │
+│         ↓                                                    │
+│  2-8. 同方法A                                                │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -165,21 +233,10 @@ FL-{abbr}-10-02 行军推进子流程
 ├── FL-{abbr}-10-02-02  实时位置更新
 │   ⏱ 刷新间隔 ≤ 5秒
 │   📱 部队图标沿路线平滑移动
-├── FL-{abbr}-10-02-03  → FL-{abbr}-10-02-03 (遭遇拦截)
 └── FL-{abbr}-10-02-04  到达目标城池
     ⏱ 到达后自动弹出攻城确认，10秒无操作自动进入
     📱 城池图标放大脉冲动画，底部弹出"发起攻城"按钮
 
-FL-{abbr}-10-02-03 遭遇拦截子流程
-├── FL-{abbr}-10-02-03-01  拦截事件触发
-│   ⏱ 到达拦截点时立即触发；屏幕震动 0.5秒
-│   📱 红色警告横幅从顶部滑入，地图蒙层半透明遮罩
-├── FL-{abbr}-10-02-03-02  显示敌方信息
-│   ⏱ 面板弹出动画 300ms
-│   📱 底部弹出面板（40%屏幕），左侧敌方头像+兵力，右侧战力对比
-└── FL-{abbr}-10-02-03-03  选择应对
-    ⏱ 倒计时 30秒，超时默认"迎战"
-    📱 "迎战"（红色）"撤退"（灰色），居中底部
 ```
 
 ## Step 0: 提取流程 (Extract & Normalize Flows)
@@ -260,13 +317,15 @@ docs/iterative-flows/{abbr-NN-name}/
 │   └── ...
 └── rounds/
     ├── round-N/
-    │   ├── plan.md
+    │   ├── plan.md                     # 记录本轮使用的方法 (A/B/C)
     │   ├── report.md
     │   ├── issues.md
     │   └── review/
     │       ├── user-proxy-findings.md
     │       ├── dev-proxy-findings.md
-    │       └── integrator-findings.md
+    │       ├── integrator-findings.md
+    │       ├── cross-review-{phase}.md # [方法B/C] 四轴交叉审查报告+决策日志
+    │       └── cross-review-summary.md # [方法B/C] 全局决策总览
     └── summary.md
 ```
 
@@ -304,45 +363,27 @@ docs/iterative-flows/{abbr-NN-name}/
 4. **流转条件**: 明确阶段间的"什么时候从A到B"，不能只写"完成后进入下一阶段"
 5. **异常跳转**: 每个阶段至少考虑一个异常退出路径
 
-## Step 1: 三代理评审 (Three-Proxy Review)
+## Step 1A: 三代理评审 (Three-Proxy Review)
 
-**ALWAYS FIRST in every round.** User Proxy 和 Dev Proxy 并行评审，完成后 Integrator 串行执行全局一致性检查 + 合并去重。
+**方法 A 的核心步骤。** User Proxy 和 Dev Proxy 并行评审，完成后 Integrator 串行执行全局一致性检查 + 合并去重。
 
-### The Three Proxies
+三个代理角色：**User Proxy**（终端用户视角，发现交互缺失和体验断裂）、**Dev Proxy**（实施工程师视角，发现歧义和边界遗漏）、**Integrator**（产品负责人视角，发现跨流程矛盾和引用断裂）。
 
-| Role | Represents | Core Question | Discovers |
-|------|-----------|---------------|-----------|
-| User Proxy | 终端用户 | "作为用户走完这个流程，我会在哪里困惑/卡住？" | 交互缺失、感知空白、异常场景下体验断裂 |
-| Dev Proxy | 实施工程师 | "拿这份流程去编码，我会在哪里不确定/无法动手？" | 歧义描述、约束缺失、边界条件遗漏 |
-| Integrator | 产品负责人 | "所有流程拼在一起，哪里对不上/漏掉了？" | 跨流程矛盾、共享子流程不一致、引用断裂 |
+执行模式：User Proxy ∥ Dev Proxy 并行 → Integrator 串行合并去重 → 输出 issues.md
 
-### 各代理探索维度
+> 完整代理定义、探索维度、发现格式、执行模式和提示词见 [三代理评审详细指引](references/three-proxy-review.md)
 
-**User Proxy**: 视觉感知（页面元素/加载状态）→ 操作引导（下一步做什么/可逆性/反馈）→ 异常场景（网络断/输错/失败/意外退出）→ 流程连贯性 → 不同用户角色
+## Step 1B: 四轴交叉审查 (Four-Axis Cross-Review)
 
-**Dev Proxy**: 数据完整性（字段/关联/校验）→ 状态流转（转换条件/不可达状态）→ 业务规则（公式/排序/定时任务）→ 非功能约束（性能/安全）→ 实施歧义（模糊描述/未定义概念/断裂引用）
+**方法 B 核心步骤。按 Phase 分批执行：先生成四轴输出，再模拟多视角交叉审查。**
 
-**Integrator**: 跨流程一致性 → 术语一致性 → 数据一致性 → 流程衔接 → 索引完整性（ID唯一/引用有效/无孤立流程）
+四轴：Flow（流程完整性）、Data（数据一致性）、Role（职责清晰性）、Rule（条件完整性）。每个轴从自身视角审查其他轴的输出，发现轴间间隙。
 
-### 每条发现必须包含
+执行流程：并行生成四轴输出 → 模拟多视角交叉审查 → 分类处理（A类自动解决/R类推荐方案/Q类待用户决策）→ 输出决策日志 → 如有Q类暂停等待用户
 
-- User Proxy: 流程步骤(FL-{abbr}-{NN}-{NN}) | 用户角色 | 遇到的问题 | 缺失描述 | 优先级(P0-P3)
-- Dev Proxy: 流程/数据(FL-{abbr}-{NN}) | 实施困惑 | 可能的理解方式 | 需补充内容 | 优先级
-- Integrator: 检查项 | 关联流程 | 矛盾描述 | 需修正内容 | 优先级
+> 完整四轴定义、执行流程、审查问题清单（20项）、决策日志格式、产出文件结构、与三代理评审的对比见 [四轴交叉审查详细指引](references/four-axis-cross-review.md)
 
-### 执行模式
-
-```
-Phase 1 (并行):
-Task(A user-proxy): 走流程 → 写入 rounds/round-N/review/user-proxy-findings.md
-Task(B dev-proxy):  检查可实施性 → 写入 rounds/round-N/review/dev-proxy-findings.md
-  ↓ 等待两者完成
-Phase 2 (串行):
-Task(C integrator): 全局一致性检查 → 写入 rounds/round-N/review/integrator-findings.md
-                     → 读取 User/Dev 发现 → 合并三方去重 → 分类 → 按优先级排序 → 写入 rounds/round-N/issues.md
-  ↓ 等待完成
-Read rounds/round-N/issues.md → 进入 Step 2
-```
+---
 
 ## Step 2: 修改流程文档 (Update Flows)
 
@@ -423,7 +464,10 @@ P2/P3 issues logged for next round but don't block current round.
 
 **从零核验**，忽略之前所有轮次的结果，重新核验全部流程。
 
-**执行方式**: 与 Step 1 相同的 Task 模式 — User/Dev Proxy 并行 subagent → Integrator 串行 subagent。
+**执行方式**: 根据当前使用的方法选择核验模式：
+- 方法 A: 与 Step 1A 相同的 Task 模式 — User/Dev Proxy 并行 subagent → Integrator 串行 subagent
+- 方法 B: 与 Step 1B 相同的四轴交叉审查 — 按 Phase 分批模拟多视角审查
+- 方法 C: 先执行 1B 四轴审查，再执行 1A 三代理评审
 
 ```
 1. 梳理所有流程 → 检查子流程引用有效性
@@ -447,12 +491,13 @@ P2/P3 issues logged for next round but don't block current round.
 **执行方式**: 主会话分派 subagent 生成各文档，主会话仅读取文件摘要向用户汇报。
 
 ```
-1. 生成本轮报告 → rounds/round-N/report.md
+1. 生成本轮报告 → rounds/round-N/report.md（记录使用的方法: A/B/C）
 2. 更新PRD缺失清单 → PRD-GAPS.md
 3. 更新流程补全检查清单 → CHECKLIST.md
-4. 生成下轮计划 → rounds/round-N+1/plan.md
+4. 生成下轮计划 → rounds/round-N+1/plan.md（记录下轮使用的方法）
 5. 每3轮进行复盘（当 N % 3 == 0 时）→ 更新 rounds/summary.md
 6. 更新 INDEX.md 和 flows/INDEX.md（如有新增ID或文件）
+7. [方法B/C] 合并所有 Phase 的决策日志 → rounds/round-N/review/cross-review-summary.md
 ```
 
 ## Execution Model
@@ -559,6 +604,9 @@ Subagents:   Flow writing, completeness checks, reviews, three-proxy roles
 | [time-space-guidelines.md](references/time-space-guidelines.md) | 时间/空间描述要点指引 | 子流程模板内引用 |
 | [prd-gaps-template.md](references/prd-gaps-template.md) | PRD 缺失清单模板 | PRD缺失清单节 |
 | [checklist-template.md](references/checklist-template.md) | 流程补全检查清单模板 | 流程补全检查清单节 |
-| [user-proxy-prompt.md](references/user-proxy-prompt.md) | User Proxy 评审提示词 | Step 1 各代理探索维度 |
-| [dev-proxy-prompt.md](references/dev-proxy-prompt.md) | Dev Proxy 评审提示词 | Step 1 各代理探索维度 |
-| [integrator-prompt.md](references/integrator-prompt.md) | Integrator 评审提示词 | Step 1 各代理探索维度 |
+| [three-proxy-review.md](references/three-proxy-review.md) | 三代理评审详细指引（代理定义、探索维度、执行模式） | Step 1A 三代理评审 |
+| [four-axis-cross-review.md](references/four-axis-cross-review.md) | 四轴交叉审查详细指引（四轴定义、审查清单、决策日志格式） | Step 1B 四轴交叉审查 |
+| [user-proxy-prompt.md](references/user-proxy-prompt.md) | User Proxy 评审提示词 | 三代理评审指引内引用 |
+| [dev-proxy-prompt.md](references/dev-proxy-prompt.md) | Dev Proxy 评审提示词 | 三代理评审指引内引用 |
+| [integrator-prompt.md](references/integrator-prompt.md) | Integrator 评审提示词 | 三代理评审指引内引用 |
+| [multi-perspective-review-design.md](docs/multi-perspective-review-design.md) | 四轴交叉审查设计文档（问题清单、Prompt模板、决策日志格式） | 四轴交叉审查指引内引用 |
